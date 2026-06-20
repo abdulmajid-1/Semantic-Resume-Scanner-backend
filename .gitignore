@@ -1,0 +1,32 @@
+# Python Virtual Environments
+venv/
+env/
+ENV/
+
+# Database & Environment Configuration
+.env
+.env.local
+
+# Candidate Resume Uploads & Local Indexes
+uploads/
+faiss_index/
+
+# Python Compiled Caches & Files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
