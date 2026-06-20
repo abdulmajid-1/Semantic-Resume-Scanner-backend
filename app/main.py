@@ -31,7 +31,7 @@ app = FastAPI(
 )
 
 # CORS configuration
-# Allows requests from React Frontend (supports Vite auto-port-increment)
+# Allows requests from React Frontend (local dev + deployed Vercel)
 cors_origins = [
     settings.FRONTEND_URL,
     "http://localhost:5173",
@@ -40,6 +40,7 @@ cors_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
