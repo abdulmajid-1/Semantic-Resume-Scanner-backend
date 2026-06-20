@@ -51,8 +51,8 @@ def on_startup():
     """
     Actions performed on application startup:
     1. Ensure database tables exist (if not using Alembic explicitly)
-    2. Warm up / load the SentenceTransformer model
-    3. Load FAISS index or build it if missing
+    2. Warm up / load the SentenceTransformer model (in background thread)
+    3. Load FAISS index or build it if missing (in background thread)
     """
     logger.info("Application starting up...")
     
@@ -64,26 +64,35 @@ def on_startup():
     except Exception as e:
         logger.error(f"Failed to verify/create database tables: {e}")
 
-    # 2. Load NLP & SentenceTransformers models
-    try:
-        from app.embeddings.embedding_service import EmbeddingService
-        # Instantiating the service triggers model download/load
-        EmbeddingService()
-    except Exception as e:
-        logger.error(f"Failed to initialize embedding service: {e}")
+    # 2 & 3. Load models and FAISS index in a background thread
+    # This prevents blocking the port binding on Render's free tier
+    import threading
 
-    # 3. Load or build FAISS index
-    try:
-        from app.database.connection import SessionLocal
-        from app.faiss_search.faiss_service import FAISSSearchService
-        db = SessionLocal()
-        faiss_service = FAISSSearchService()
-        if faiss_service.index.ntotal == 0:
-            logger.info("FAISS index is empty. Performing initial build from database...")
-            faiss_service.rebuild_index(db)
-        db.close()
-    except Exception as e:
-        logger.error(f"Failed to initialize FAISS index search: {e}")
+    def _load_models():
+        try:
+            from app.embeddings.embedding_service import EmbeddingService
+            EmbeddingService()
+            logger.info("SentenceTransformer model ready.")
+        except Exception as e:
+            logger.error(f"Failed to initialize embedding service: {e}")
+
+        try:
+            from app.database.connection import SessionLocal
+            from app.faiss_search.faiss_service import FAISSSearchService
+            db = SessionLocal()
+            faiss_service = FAISSSearchService()
+            if faiss_service.index.ntotal == 0:
+                logger.info("FAISS index is empty. Performing initial build from database...")
+                faiss_service.rebuild_index(db)
+            db.close()
+            logger.info("FAISS index ready.")
+        except Exception as e:
+            logger.error(f"Failed to initialize FAISS index search: {e}")
+
+    thread = threading.Thread(target=_load_models, daemon=True)
+    thread.start()
+    logger.info("Background model loading started. Server is accepting requests.")
+
 
 
 # Register routers under /api prefix
